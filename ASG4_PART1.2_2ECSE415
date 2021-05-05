@@ -1,0 +1,186 @@
+import numpy as np
+import cv2
+import matplotlib.pyplot as plt
+from skimage import segmentation, color
+from skimage.future import graph
+from skimage.segmentation import quickshift
+from sklearn import mixture
+import torch
+import torchvision
+import torchvision.transforms as transforms
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+path= '/content/drive/My Drive/ECSE415_ASG4/Assignment-4/'
+
+# Read image
+img = cv2.cvtColor(cv2.imread(path+'flower.jpg'), cv2.COLOR_BGR2RGB)
+
+# apply k-means. This will generate super pixels
+compact= [1, 5, 10, 50, 80, 100, 300, 500] #vary compactness, we have different values in a list. Same method is applied for the rest of part 1.2.
+
+for cpt in compact:
+  labels1 = segmentation.slic(img, compactness= cpt, n_segments=400)
+  out1 = color.label2rgb(labels1, img, kind='avg')
+  g = graph.rag_mean_color(img, labels1, mode='similarity')
+  labels2 = graph.cut_normalized(labels1, g)
+  out2 = color.label2rgb(labels2, img, kind='avg')
+  
+  
+  plt.figure(figsize=(15,15))
+
+img = cv2.cvtColor(cv2.imread(path+'flower.jpg'), cv2.COLOR_BGR2RGB)
+
+# apply k-means. This will generate super pixels
+threshold= [0.001, 0.01, 0.05, 0.08, 1, 2, 5, 10]
+
+for thrs in threshold:
+  labels1 = segmentation.slic(img, compactness= 5, n_segments=400)
+  out1 = color.label2rgb(labels1, img, kind='avg')
+  g = graph.rag_mean_color(img, labels1, mode='similarity')
+  labels2 = graph.cut_normalized(labels1, g, thresh= thrs)
+  out2 = color.label2rgb(labels2, img, kind='avg')
+  
+  
+  plt.figure(figsize=(15,15))
+  #for i in range(5):
+  plt.subplot(1,3, 1), plt.imshow(img)
+  plt.title("Original Image"), plt.xticks([]), plt.yticks([])
+  plt.subplot(1,3,2), plt.imshow(out1)
+  plt.title("Super-pixel Image"), plt.xticks([]), plt.yticks([])
+  plt.subplot(1,3,3), plt.imshow(out2)
+  plt.title("Segmented Image"), plt.xticks([]), plt.yticks([])
+  plt.show()
+  #for i in range(5):
+  plt.subplot(1,3, 1), plt.imshow(img)
+  plt.title("Original Image"), plt.xticks([]), plt.yticks([])
+  plt.subplot(1,3,2), plt.imshow(out1)
+  plt.title("Super-pixel Image"), plt.xticks([]), plt.yticks([])
+  plt.subplot(1,3,3), plt.imshow(out2)
+  plt.title("Segmented Image"), plt.xticks([]), plt.yticks([])
+  plt.show()
+  
+
+img = cv2.cvtColor(cv2.imread(path+'flower.jpg'), cv2.COLOR_BGR2RGB)
+
+# apply k-means. This will generate super pixels
+segments= [5, 10, 100, 400, 800, 1000, 1500]
+
+for sgmts in segments:
+  labels1 = segmentation.slic(img, compactness= 5, n_segments=sgmts)
+  out1 = color.label2rgb(labels1, img, kind='avg')
+  g = graph.rag_mean_color(img, labels1, mode='similarity')
+  labels2 = graph.cut_normalized(labels1, g)
+  out2 = color.label2rgb(labels2, img, kind='avg')
+  
+  
+  plt.figure(figsize=(15,15))
+  #for i in range(5):
+  plt.subplot(1,3, 1), plt.imshow(img)
+  plt.title("Original Image"), plt.xticks([]), plt.yticks([])
+  plt.subplot(1,3,2), plt.imshow(out1)
+  plt.title("Super-pixel Image"), plt.xticks([]), plt.yticks([])
+  plt.subplot(1,3,3), plt.imshow(out2)
+  plt.title("Segmented Image"), plt.xticks([]), plt.yticks([])
+  plt.show()
+ 
+ #______________________________________________________________________________________________________________________________________________________________________________
+ 
+ #using PyTorch for Dataset:
+
+transform = transforms.Compose(
+    [transforms.ToTensor(),
+     transforms.Normalize((0.5,), (0.5,))]) #fix applied to deal with the difference in image output and image broadcast in the following cell.
+
+trainset = torchvision.datasets.MNIST(root='./data', train=True,
+                                        download=True, transform=transform)
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=32,
+                                          shuffle=True, num_workers=2)
+
+testset = torchvision.datasets.MNIST(root='./data', train=False,
+                                       download=True, transform=transform)
+testloader = torch.utils.data.DataLoader(testset, batch_size=32,
+                                         shuffle=False, num_workers=2)
+
+classes = ('0', '1', '2', '3', '4',
+           '5', '6', '7', '8', '9')
+
+class Net(nn.Module):
+  def __init__(self):
+    super(Net, self).__init__()
+    self.conv1 = nn.Conv2d(1, 32, 3) #use 1 channel as input because we have black and white colors only.
+    self.conv2 = nn.Conv2d(32, 64, 3)
+    self.pool = nn.MaxPool2d(2, 2)
+    self.conv3 = nn.Conv2d(64, 64, 3)
+    self.conv4 = nn.Conv2d(64, 64, 3)
+    self.fc1 = nn.Linear(4096, 10)
+
+  def forward(self, x):
+     x =F.relu(self.conv1(x)) #add a convolutior layer + ReLU activation
+     x =F.relu(self.conv2(x)) #add a second convolution layer +ReLU Activation
+     x= self.pool(x) # add a maxpool layer 
+     x=F.relu(self.conv3(x)) #add a third convolution layer +ReLU Activation
+     x=F.relu(self.conv4(x)) # add a fourth convolution layer +ReLU Activation
+     x = x.view(-1, 4096) # flatten layer with length of feature vector 4096. 
+     x = self.fc1(x) #Linear layer with output 10.
+     return x
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print(device)
+
+net = net.to(device) #to be able to use GPU
+
+#Instance of SGD Optimizer.
+
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.SGD(net.parameters(), lr=0.001)
+
+for epoch in range(12):  # loop over the dataset multiple times
+
+    running_loss = 0.0
+    for i, data in enumerate(trainloader, 0):
+        # get the inputs; data is a list of [inputs, labels]
+        inputs, labels = data
+        inputs = inputs.to(device)
+        labels = labels.to(device)
+
+        # zero the parameter gradients
+        optimizer.zero_grad()
+
+        # forward + backward + optimize
+        outputs = net(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+
+        # print statistics
+        running_loss += loss.item()
+        if i % 2000 == 1999:    # print every 2000 mini-batches
+            print('[%d, %5d] loss: %.3f' %
+                  (epoch + 1, i + 1, running_loss / 2000))
+            running_loss = 0.0
+
+print('Finished Training')
+
+correct = 0
+total = 0
+with torch.no_grad():
+    for data in testloader:
+        images, labels = data
+        images = images.to(device)
+        labels = labels.to(device)
+        outputs = net(images)
+        _, predicted = torch.max(outputs.data, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+
+print('Accuracy of the network on the 10000 test images: %d %%' % (
+    100 * correct / total))
+
+PATH = path+'./MNIST_net.pth'
+torch.save(net.state_dict(), PATH)

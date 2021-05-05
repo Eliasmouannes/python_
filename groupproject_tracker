@@ -1,0 +1,181 @@
+import cv2
+import sys
+import numpy as np
+import shelve
+import matplotlib.pyplot as plt
+import time 
+import math
+import matplotlib.animation as animation
+import os
+from skimage import feature
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+elias_path = '/content/drive/My Drive/Colab Notebooks/Final Project/'
+cheng_path = '/content/drive/My Drive/McGill/U3/ECSE-415/Final Project/'
+
+path = elias_path
+shelve_path = elias_path + '/Detection-Data/DetectionShelve'
+
+#get list of locations of the pedestrians
+shelf = shelve.open(shelve_path)
+# dictionary format:
+# {"TUD-Stadmitte:"[(bboxX,bboxY,confidence,w,h),(bboxX,bboxY,confidence,w,h)...]}
+stadmitte_detections= shelf["TUD-Stadtmitte"] 
+campus_detections= shelf["TUD-Campus"] 
+crossing_detections= shelf["TUD-Crossing"] 
+
+
+# created a dictionnary to map ID to path, which depends on which dataset to execute the code on.
+trainingset= {1: path +'train/TUD-Stadtmitte/imgs',
+              2: path +'train/TUD-Campus/imgs',
+              3: path +'test/TUD-Crossing/imgs'}
+
+
+#coordinates of detected items in first images
+videos_dict={1: stadmitte_detections, 
+             2: campus_detections,
+             3: crossing_detections}
+
+detect= input("set to select: 1- Stadmitte, 2- Campus: ") #prompt user
+
+if detect=='1':
+  num= 1
+  num_frames= 179 #number of images in path
+if detect=='2':
+  num=2
+  num_frames= 71
+if detect=='3':
+  num=3
+  num_frames= 201
+else:
+  while detect > '3':
+    deetect= input("set to select: 1- Stadmitte, 2- Campus: ")
+    
+ #Once a value is selected, the desired path is returned.
+ 
+ frame = optflow[0] #Take first frame
+frame_y, frame_x = frame.shape
+mask = np.zeros((frame_y, frame_x, 3))#mask is where the operations occur for optical flow.
+  
+# Sets image saturation to maximum
+mask[..., 1] = 255
+
+fig= plt.figure()
+
+
+for bbox in videos_dict[num]: #initialize bounding boxes in first frame, and add them to seperate list.
+  p1= (int(bbox[0]), int(bbox[1]))
+  p2= (int(bbox[0]+bbox[2]), int(bbox[1]+bbox[3]))
+  cv2.rectangle(imgrgb[0],p1, p2, (0,128,0), 2, 1)
+  im_= plt.imshow(imgrgb[0], animated=True)
+  ims.append([im_])
+
+for i in range(1, len(optflow)):
+  flow = cv2.calcOpticalFlowFarneback(prev=frame,   #returns the difference vector for each point in the image as it is a dense optical flow algorithm.
+                                    next=optflow[i], 
+                                    flow=None,
+                                    pyr_scale=0.5, 
+                                    levels=3, 
+                                    winsize=15,
+                                    iterations=3, 
+                                    poly_n=5, 
+                                    poly_sigma=1.2, 
+                                    flags=0)
+  
+  magnitude, angle = cv2.cartToPolar(flow[..., 0], flow[..., 1]) #find the change in magnitude and phase for each vector;
+  mask[..., 0] = angle * 180 / np.pi / 2
+  #for v in mask[..., 0]:
+    #avgang= np.sum(v)/len(mask[...,0])                   #Here, we find the average value phase and magnitude for vector difference to use when computing new point locations.
+  avgang= np.mean(mask[..., 0])
+  mask[..., 2] = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX)
+  #for w in mask[..., 2]:
+   # avmag= np.sum(w)/len(mask[...,2])
+  avmag= np.mean(mask[..., 2])
+  rgb = cv2.cvtColor(mask.astype(np.float32), cv2.COLOR_HSV2BGR) #The mask returns only the movement of objects in the frame.
+  im= plt.imshow(rgb, animated=True)
+  ims.append([im])
+  prev= next #the new image bcomes the old one, as the algorithm is ready to accept a new one for the next operation.
+
+  
+  
+  
+#Commented because this failed. However, the idea is to use the average magnitude and phase within the box to compute an approximation of the new point. 
+  #point1= (int(p1[0]+avmag*math.cos(avgang)), int(p1[1]+avmag*math.sin(avgang)))
+  #point2= (int(p2[0]+avmag*math.cos(avgang)), int(p2[1]+avmag*math.sin(avgang))) 
+  #cv2.rectangle(ims[i], point1, point2, (0,128,0), 2, 1)
+  #im2= plt.imshow((ims[i]), animated=True)
+  #ims.append(im2)
+
+  #p1= point1
+ 
+#________________________________________________________________________________________________________________________________________________________________________________
+
+#Tracker using openCV multritracker()
+
+img_list= []
+img_list2=[] #creating a second list to project the findings of the processed images on the original ones.
+temp=[] #creating third list to be able to perform difference between images.
+
+def preprocessing(img1, img2):  #preprocessing tools: Convert to gray scale, then apply gaussianblur() too smooth edges.
+  gray1= cv2.cvtColor(img1, cv2.COLOR_BGR2GRAY)
+  gray2= cv2.cvtColor(img2, cv2.COLOR_BGR2GRAY)
+
+  blur1= cv2.GaussianBlur(gray1, (5,5), cv2.BORDER_CONSTANT)
+  blur2= cv2.GaussianBlur(gray2, (5,5), cv2.BORDER_CONSTANT)
+
+  return blur1, blur2
+
+image1, image2= preprocessing(test, test2)
+
+diff= cv2.absdiff(image1, image2) #execute this method to remove what is not moving in the frames.
+edges= cv2.Canny(diff, 9, 27) #apply Canny edge detection to make pedestrians more visible 
+
+img= cv2.imread(trainingset[num]+'/'+ n + str(x) +'.jpg')
+img= cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+temp.append(img)
+img_list2.append(img)
+
+for i in range(1, len(temp)): #same operation as in the test above.
+  blur1, blur2= preprocessing(img, temp[i])
+  diff= cv2.absdiff(blur1, blur2)
+  edge= cv2.Canny(diff, 10, 30)
+  img_list.append(edge)
+  img=temp[i]
+
+blur3, blur4= preprocessing(temp[len(temp)-2], temp[len(temp)-1]) #adding the last frame because this couldnt be done in the for loop above.
+diff2=cv2.absdiff(blur4, blur3)
+edge2= cv2.Canny(diff2, 7,21)
+img_list.append(edge2)
+ 
+fig = plt.figure()
+#initialize tracker type.
+ 
+tracker= cv2.TrackerCSRT_create()
+#Initialize multitracker to track multiple objects with first frame and bounding boxes of objects to be tracked.
+ 
+multitrack= cv2.MultiTracker_create()
+for bbox in videos_dict[num]:
+  multitrack.add(tracker, img_list[0], bbox)
+  
+ims = []
+#box_0=[]
+#for img in img_list:
+for j in range(len(img_list)):
+  # Update tracker
+  ok, bboxes = multitrack.update(img_list[j])
+ 
+  # Tracking success
+  for i, bbox in enumerate(bboxes): #instead of implementing nested for loops, use enumerate as in tutorial 4 for faster processing.
+    p1 = (int(bbox[0]), int(bbox[1]))
+    p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
+    cv2.rectangle(img_list2[j], p1, p2, (0,128,0), 2, 1)
+    #box_0.append([p1, p2])
+    im = plt.imshow(img_list2[j], animated=True)
+    ims.append([im])
+ 
+print('Waiting for display')
+ani = animation.ArtistAnimation(fig, ims, interval=1000/20, blit=True, repeat_delay=1000)
+ani.save(path+'edge_crossing_test.mp4')
+plt.close()

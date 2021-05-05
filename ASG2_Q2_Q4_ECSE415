@@ -1,0 +1,254 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from statistics import mean
+import matplotlib.image as mptimage
+import cv2
+from PIL import Image
+from google.colab.patches import cv2_imshow
+
+
+
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+path = '/content/drive/My Drive/Assignment2_ECSE415/Assignment-2/images/'
+
+# To be able to implement SIFT
+!pip install opencv-contrib-python==3.4.2.17
+
+book_path= path+"book.jpg"
+
+img= cv2.imread(book_path)
+img_DOG= img.copy()
+
+img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+img_DOG = cv2.cvtColor(img_DOG, cv2.COLOR_BGR2RGB)
+
+sift = cv2.xfeatures2d.SIFT_create() 
+
+keypoints = sift.detect(img, None) #DETECT THE KEYPOINTS.
+cv2.drawKeypoints(img, keypoints, img_DOG, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)# DRAW IDENTIFIED KEYPOINTS ON IMAGE.
+
+plt.figure(figsize=(10,10))
+plt.subplot(121), plt.imshow(img)
+plt.title("Input Image"), plt.xticks([]), plt.yticks([])
+plt.subplot(122), plt.imshow(img_DOG)
+plt.title("SIFT Features"), plt.xticks([]), plt.yticks([])
+plt.show()
+
+def scale_image(image, scale):
+  w= int(image.shape[0]*float(scale))
+  h= int(image.shape[1]*float(scale))
+
+  new_img= cv2.resize(image, (w,h))
+
+  return new_img
+
+
+img_0_2= scale_image(img, 0.2)
+img_0_8= scale_image(img, 0.8)
+img_2= scale_image(img, 2)
+img_5= scale_image(img, 5)
+
+plt.imshow(img_0_2)
+plt.show()
+
+plt.imshow(img_0_8)
+plt.show()
+
+plt.imshow(img_2)
+plt.show()
+
+plt.imshow(img_5)
+plt.show()
+
+#scale images+ keypoints display
+img_copy=img.copy()
+
+i_02= img_0_2.copy()
+i_08= img_0_8.copy()
+i_2= img_2.copy()
+i_5= img_5.copy()
+
+
+
+
+sift = cv2.xfeatures2d.SIFT_create() 
+
+
+keypts1, desc1 = sift.detectAndCompute(i_02,None)
+keypts2, desc2 = sift.detectAndCompute(i_08,None)
+keypts3, desc3 = sift.detectAndCompute(i_2,None)
+keypts4, desc4 = sift.detectAndCompute(i_5,None)
+
+
+
+cv2.drawKeypoints(img_copy, keypts1, i_02, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)# DRAW IDENTIFIED KEYPOINTS ON IMAGE.
+
+plt.figure(figsize=(10,10))
+plt.subplot(121), plt.imshow(img_copy)
+
+plt.title("Input Image"), plt.xticks([]), plt.yticks([])
+plt.subplot(122), plt.imshow(i_02)
+plt.title("SIFT Features"), plt.xticks([]), plt.yticks([])
+plt.show()
+
+
+cv2.drawKeypoints(img_copy, keypts2, i_08, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)# DRAW IDENTIFIED KEYPOINTS ON IMAGE.
+
+plt.figure(figsize=(10,10))
+plt.subplot(121), plt.imshow(img_copy)
+plt.title("Input Image"), plt.xticks([]), plt.yticks([])
+
+plt.subplot(122), plt.imshow(i_08)
+plt.title("SIFT Features"), plt.xticks([]), plt.yticks([])
+plt.show()
+
+
+cv2.drawKeypoints(img_copy, keypts3, i_2, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)# DRAW IDENTIFIED KEYPOINTS ON IMAGE.
+
+plt.figure(figsize=(10,10))
+plt.subplot(121), plt.imshow(img_copy)
+plt.title("Input Image"), plt.xticks([]), plt.yticks([])
+
+plt.subplot(122), plt.imshow(i_2)
+plt.title("SIFT Features"), plt.xticks([]), plt.yticks([])
+plt.show()
+
+cv2.drawKeypoints(img_copy, keypts4, i_5, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)# DRAW IDENTIFIED KEYPOINTS ON IMAGE.
+
+plt.figure(figsize=(10,10))
+plt.subplot(121), plt.imshow(img_copy)
+plt.title("Input Image"), plt.xticks([]), plt.yticks([])
+
+plt.subplot(122), plt.imshow(i_5)
+plt.title("SIFT Features"), plt.xticks([]), plt.yticks([])
+plt.show()
+
+#The brute-force method involves a straightforward application of the required operation. Hence, we need to find keypoints, then draw matches. They keypoints have been found
+#in the previous algorithm, we need to match them with the reference image. To do so, we will have 4 images as output, matching reference image to each scaled image.
+#Having the sift descriptor will also enhance performance of matching.
+
+
+bf = cv2.BFMatcher()
+
+matches1= bf.match(desc,desc1)
+matches2= bf.match(desc,desc2)
+matches3= bf.match(desc,desc3)
+matches4= bf.match(desc,desc4)
+
+img_match= []
+kpts=[keypts1, keypts2, keypts3, keypts4]
+matches=[matches1, matches2, matches3, matches4]
+images=[i_02, i_08, i_2, i_5]
+for i in range(len(images)):
+  img_match.append(cv2.drawMatches(img,keypts,images[i],kpts[i], matches[i], None, flags=2))
+  
+  plt.figure(figsize=(20,20))
+  plt.imshow(img_match[i])
+  plt.title("Matched keypoints"), plt.xticks([]), plt.yticks([])
+  plt.show()
+
+matches_sort1= sorted(matches1, key = lambda x:x.distance)
+matches_sort2= sorted(matches2, key = lambda x:x.distance)
+matches_sort3= sorted(matches3, key = lambda x:x.distance)
+matches_sort4= sorted(matches4, key = lambda x:x.distance)
+
+
+images= [img_0_2, img_0_8, img_2, img_5]
+match_sort=[matches_sort1, matches_sort2, matches_sort3, matches_sort4]
+kpts=[keypts1, keypts2, keypts3, keypts4]
+img_match_sort=[]
+for i in range(len(images)):
+  img_match_sort.append(cv2.drawMatches(img,keypts,images[i],kpts[i], match_sort[i][:10], None, flags=2))
+  
+  plt.figure(figsize=(30,30))
+  plt.imshow(img_match_sort[i])
+  plt.title("Matched keypoints"), plt.xticks([]), plt.yticks([])
+  plt.show()
+
+#for distance computation. We sorted the match according to distance. for eaach match, we have a distance match.distance as stated by x.distance for every x in match_sort algorithm of the previous question.
+
+def distance(m_sort):
+  arr=[]
+  for i, m in enumerate(m_sort[:100]): #i represents indexes, and m the matches.
+    arr.append(m.distance) #returns the distance of each match, and append to array of matches.
+  
+  return arr
+ 
+
+match_sort=[matches_sort1, matches_sort2, matches_sort3, matches_sort4]
+
+dist_arr=[distance1, distance2, distance3, distance4]
+
+x=[]
+scales=[0.2, 0.8, 2, 5]
+for i in range(100):
+  x.append(i)
+for i in range(len(match_sort)):
+  dist_arr[i]= distance(match_sort[i])
+
+  plt.figure(figsize=(5,5))
+  
+  plt.title("Scale "+str(scales[i]))
+  plt.ylabel("Distance")
+  plt.xlabel("Indexes")
+  plt.plot(x, dist_arr[i])
+  plt.show()
+
+#____________________________________________________________________________________________________________________________________________________________________________
+
+ref_path= path+"find_me_image.jpg"
+face_path= path+"template.jpg"
+
+ref= cv2.imread(ref_path)
+face= cv2.imread(face_path)
+
+ref= cv2.cvtColor(ref, cv2.COLOR_BGR2RGB)
+face= cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+
+
+
+h_ref= ref.shape[0]
+w_ref= ref.shape[1]
+
+h_face= face.shape[0]
+w_face= face.shape[1]
+
+def ref_crop(image, h, w, lim1, lim2):  #images have different sizes. Therefore, we will go with a sliding window approach, comparing each pixel one by one in a window
+                                        #possessing the dimensions of the template image. 
+  return image[lim1: h+lim1, lim2:w+lim2, :]
+  #returns the local patch, havinf dimensions of the template.
+
+def SSD(ref_img, template, w1, h1, w2, h2): #method to compute SSD 
+  array=[[0 for i in range(w1-w2+1)]for j in range(h1-h2+1)] #initialize array that will hold the values of the SSDs of the referance image.
+  for i in range(0, (h1-h2+1)): #as we are operating on a sliding window, the values taken by these indeces complement the indeces of the template image, which gies the size of the ref image.
+                                #the maximum value held by i is 992-50+1= 943. we add 1 to compensate for the lost index. 
+    for j in range(0, (w1-w2+1)): #the maximum value held by j is 629-50+1= 580
+      #ref_pixel= mtl[i:h_face+i][j:w_face+j][:] #This did not work as we would get different dimensions for j.
+      ref_pixel= ref_crop(ref_img, h2, w2, i, j) #by adding 50 to each i and j, the maximum value we get is that of the reference image. i.e, by adding 50, we get indices of the refernce image.
+      array[i][j]= np.sum((ref_pixel-template)**(2)) #we get SSD for each element.
+  return array
+
+SSD_img= SSD(ref, face, w_ref, h_ref, w_face, h_face)
+
+plt.figure(figsize=(20,20))
+plt.imshow(ref)
+plt.show()
+
+plt.figure(figsize= (40,40))
+plt.imshow(SSD_img) #plots the SSD of the entire image. The black dot displays the minimum SSD.
+plt.show()
+
+def min_loc(array): #method to find location of the minimum.
+  min_value= np.amin(array) #amin returns the minimum value of an array.
+  array_min= np.where(array == min_value ) # np.where() returns the location of the minimum value, however the results are seperated to 2, as we have a minimym for each axis.
+  xy= zip(array_min[0], array_min[1])# zip() allows to compine the contents of np.where() to one.
+  return tuple(xy)# when first displayed, the location was not readable. To solve this, tuple() allows to read the actual value.
+
+location= min_loc(SSD_img)
+print(location)
+
+#in the result, we can see that the location corresponds to th black dot on the SSD image.
+

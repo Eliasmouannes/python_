@@ -1,0 +1,159 @@
+import time
+import sys
+from enum import Enum
+
+# Libraries for Arduino pin for drone signals
+throttle, yaw, pitch, roll = 128, 128, 128, 128  # Require PWM outputs only
+ARM, FAILSAFE, ANGLE_MODE, ALTHOLD = 0, 0, 0, 0  # any GPIO pins would work
+
+class State(Enum):
+    START = 0
+    TAKEOFF = 1
+    SCAN = 2
+    RELOCATE = 3
+    FLY = 4
+    COUNT = 5
+    FINDLANDING = 6
+    LAND = 7
+    STOP = 8
+
+
+class main:
+
+    def __init__(self, state):
+        self.state = state
+
+    def signalParameters(self, throttle, yaw, pitch, roll, ARM, FAILSAFE, ANGLE_MODE, ALTHOLD):
+        print("throttle = ", throttle)
+        print("yaw = ", yaw)
+        print("pitch = ", pitch)
+        print("roll = ", roll)
+        print("ARM = ", ARM)
+        print("FAILSAFE = ", FAILSAFE)
+        print("ANGLE_MODE = ", ANGLE_MODE)
+        print("ALTHOLD = ", ALTHOLD)
+        print("\n")
+        
+    def restart(self):
+        ARM==0
+        throttle==0
+
+    def start(self):
+        ARM ==1
+        throttle== 0
+        if ARM==1 and throttle==0:
+            print('proceed to take-off')
+        else:
+            self.restart()
+            time.sleep(2)
+            ARM == 1
+            throttle == 0
+
+        return self.signalParameters(throttle, yaw, pitch, roll, ARM, FAILSAFE, ANGLE_MODE, ALTHOLD)
+
+
+    def landing(self):
+        for i in range(175, 0, -25):
+            throttle = i
+            print("Drone throttle", throttle)
+            time.sleep(0.5)
+        return self.signalParameters(throttle, yaw, pitch, roll, ARM, FAILSAFE, ANGLE_MODE, ALTHOLD)
+
+
+    def takeoff(self):
+
+        ALTHOLD == 0
+        for i in range(0, 175, 25):
+            throttle = i
+            print("Drone throttle", throttle)
+            time.sleep(0.5)
+        print("Drone hold is now in effect")
+
+        ALTHOLD == 1
+        return self.signalParameters(throttle, yaw, pitch, roll, ARM, FAILSAFE, ANGLE_MODE, ALTHOLD)
+
+
+    def scan(self):
+
+        yaw=1600
+        ALTHOLD==1
+
+        return self.signalParameters(throttle, yaw, pitch, roll, ARM, FAILSAFE, ANGLE_MODE, ALTHOLD)
+
+    def relocate(self):
+
+
+    def count(self):
+        ALTHOLD==1
+        return self.signalParameters(throttle, yaw, pitch, roll, ARM, FAILSAFE, ANGLE_MODE, ALTHOLD)
+
+    def findLanding(self):
+        ALTHOLD==1
+        return self.signalParameters(throttle, yaw, pitch, roll, ARM, FAILSAFE, ANGLE_MODE, ALTHOLD)
+
+    def fly(self, dest):
+
+        ALTHOLD == 1
+        if dest== ('table') :
+            throttle== 2000
+            #camera feed
+            #change camera inclination
+        elif dest== ('landing spot'):
+            throttle== 1000
+        return self.signalParameters(throttle, yaw, pitch, roll, ARM, FAILSAFE, ANGLE_MODE, ALTHOLD)
+
+    def land(self):
+
+
+    def stop(self):
+        ARM==0
+        ALTHOLD==1
+        return self.signalParameters(throttle, yaw, pitch, roll, ARM, FAILSAFE, ANGLE_MODE, ALTHOLD)
+
+
+    def StateExit(self, exiting):
+        if(exiting = State.START):
+        elif(exiting = State.TAKEOFF):
+        elif(exiting = State.SCAN):
+        elif(exiting = State.RELOCATE):
+        elif(exiting = State.FLY):
+        elif(exiting = State.COUNT):
+        elif(exiting = State.FINDLANDING):
+        elif(exiting = State.LAND):
+        elif(exiting = State.STOP):
+
+    def EnterState(self, enter):
+        if(enter = State.START):
+        elif(enter = State.TAKEOFF):
+        elif(enter = State.SCAN):
+        elif(enter = State.RELOCATE):
+        elif(enter = State.FLY):
+        elif(enter = State.COUNT):
+        elif(enter = State.FINDLANDING):
+        elif(enter = State.LAND):
+        elif(enter = State.STOP):
+    
+    def Update(self):  # execute the methods of each state, which changes values of parameters.
+        if(self.state = State.START):
+            start(self)
+        elif(self.state = State.TAKEOFF):
+            takeoff(self)
+        elif(self.state = State.SCAN):
+            scan(self)
+        elif(self.state = State.RELOCATE):
+            relocate(self)
+        elif(self.state = State.FLY):
+            fly(self)
+        elif(self.state = State.COUNT):
+            count(self)
+        elif(self.state = State.FINDLANDING):
+            findLanding(self)
+        elif(self.state = State.LAND):
+            land(self)
+        elif(self.state = State.STOP):
+            stop(self)
+    
+    def state_transition(self,  target):
+        StateExit(self.state)
+        self.state = target
+        EnterState(target)
